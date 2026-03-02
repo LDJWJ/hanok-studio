@@ -1,0 +1,2344 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한옥 설계 도구</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        :root {
+            --dancheong-red: #C73E3A;
+            --dancheong-blue: #1E4D8C;
+            --dancheong-green: #2D5A27;
+            --dancheong-yellow: #F2B705;
+            --wood-brown: #8B5A2B;
+            --tile-gray: #4A4A4A;
+            --hanji-cream: #F5F5DC;
+            --bg-dark: #2c2c2c;
+            --bg-medium: #3c3c3c;
+            --bg-light: #4c4c4c;
+            --text-light: #f0f0f0;
+            --text-muted: #a0a0a0;
+            --border-color: #555;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--dancheong-red), var(--dancheong-blue));
+            border-bottom: 3px solid var(--dancheong-yellow);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--dancheong-yellow);
+            color: var(--bg-dark);
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background: #d9a004;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-medium);
+        }
+
+        .unit-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 20px;
+            padding-left: 20px;
+            border-left: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .unit-selector label {
+            font-size: 0.9rem;
+        }
+
+        .unit-selector select {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-medium);
+            color: var(--text-light);
+            font-family: inherit;
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        /* Left Panel - Tools */
+        .tools-panel {
+            width: 120px;
+            background: var(--bg-medium);
+            padding: 15px 10px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tools-panel h3 {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .tool-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 8px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            background: var(--bg-light);
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: var(--bg-dark);
+            border-color: var(--dancheong-yellow);
+        }
+
+        .tool-btn.active {
+            background: var(--dancheong-blue);
+            border-color: var(--dancheong-yellow);
+        }
+
+        .tool-btn .icon {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        .tool-btn .label {
+            font-size: 0.75rem;
+        }
+
+        /* Center Panel - Canvas */
+        .canvas-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-dark);
+            min-width: 0;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #floorPlanCanvas {
+            display: block;
+            background: #1a1a1a;
+        }
+
+        .canvas-status {
+            padding: 8px 15px;
+            background: var(--bg-medium);
+            border-top: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .status-coords {
+            color: var(--dancheong-yellow);
+        }
+
+        .status-tool {
+            color: var(--text-muted);
+        }
+
+        /* Right Panel - 3D & Info */
+        .right-panel {
+            width: 350px;
+            background: var(--bg-medium);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .viewer-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .section-header {
+            padding: 10px 15px;
+            background: var(--bg-light);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header h3 {
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .roof-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .roof-btn {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .roof-btn:hover {
+            border-color: var(--dancheong-yellow);
+        }
+
+        .roof-btn.active {
+            background: var(--dancheong-red);
+            border-color: var(--dancheong-red);
+        }
+
+        #viewer3D {
+            flex: 1;
+            background: #0a0a0a;
+        }
+
+        /* Area Calculator */
+        .area-section {
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .area-section h3 {
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            color: var(--dancheong-yellow);
+        }
+
+        .area-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .area-item {
+            background: var(--bg-dark);
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .area-item .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .area-item .value {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .area-item.room .value { color: var(--dancheong-red); }
+        .area-item.yard .value { color: var(--dancheong-green); }
+        .area-item.hall .value { color: var(--dancheong-blue); }
+        .area-item.total .value { color: var(--dancheong-yellow); }
+
+        .area-total {
+            background: var(--bg-dark);
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid var(--dancheong-yellow);
+        }
+
+        .area-total .label {
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .area-total .value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--dancheong-yellow);
+        }
+
+        /* Export Section */
+        .export-section {
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+        }
+
+        .export-section .btn {
+            flex: 1;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-medium);
+            border-radius: 12px;
+            padding: 25px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
+            color: var(--dancheong-yellow);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            font-family: inherit;
+        }
+
+        /* Print Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printArea, #printArea * {
+                visibility: visible;
+            }
+            #printArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+
+        /* Hidden file input */
+        #fileInput {
+            display: none;
+        }
+
+        /* Context menu */
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: var(--bg-medium);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 5px 0;
+            z-index: 1000;
+            min-width: 150px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .context-menu.active {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .context-menu-item:hover {
+            background: var(--bg-light);
+        }
+
+        .context-menu-item.delete {
+            color: var(--dancheong-red);
+        }
+
+        /* Dimension input popup */
+        .dimension-popup {
+            display: none;
+            position: fixed;
+            background: var(--bg-medium);
+            border: 1px solid var(--dancheong-yellow);
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .dimension-popup.active {
+            display: block;
+        }
+
+        .dimension-popup input {
+            width: 80px;
+            padding: 5px;
+            margin: 0 5px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>한옥 설계 도구</h1>
+        <div class="header-buttons">
+            <button class="btn btn-primary" onclick="newProject()">새 프로젝트</button>
+            <button class="btn btn-secondary" onclick="saveProject()">저장</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">불러오기</button>
+            <input type="file" id="fileInput" accept=".json" onchange="loadProject(event)">
+            <div class="unit-selector">
+                <label>단위:</label>
+                <select id="unitSystem" onchange="changeUnit(this.value)">
+                    <option value="kan">칸</option>
+                    <option value="cheok">척</option>
+                    <option value="meter">미터</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Panel - Tools -->
+        <aside class="tools-panel">
+            <h3>도구</h3>
+            <button class="tool-btn active" data-tool="select" onclick="setTool('select')">
+                <span class="icon">↖</span>
+                <span class="label">선택</span>
+            </button>
+            <button class="tool-btn" data-tool="column" onclick="setTool('column')">
+                <span class="icon">●</span>
+                <span class="label">기둥</span>
+            </button>
+            <button class="tool-btn" data-tool="beam" onclick="setTool('beam')">
+                <span class="icon">─</span>
+                <span class="label">보</span>
+            </button>
+            <button class="tool-btn" data-tool="room" onclick="setTool('room')">
+                <span class="icon">□</span>
+                <span class="label">방</span>
+            </button>
+            <button class="tool-btn" data-tool="yard" onclick="setTool('yard')">
+                <span class="icon">▭</span>
+                <span class="label">마당</span>
+            </button>
+            <button class="tool-btn" data-tool="hall" onclick="setTool('hall')">
+                <span class="icon">═</span>
+                <span class="label">대청</span>
+            </button>
+        </aside>
+
+        <!-- Center Panel - Canvas -->
+        <main class="canvas-panel">
+            <div class="canvas-container">
+                <canvas id="floorPlanCanvas"></canvas>
+            </div>
+            <div class="canvas-status">
+                <span class="status-coords" id="statusCoords">X: 0 Y: 0</span>
+                <span class="status-tool" id="statusTool">도구: 선택</span>
+            </div>
+        </main>
+
+        <!-- Right Panel - 3D Viewer & Info -->
+        <aside class="right-panel">
+            <div class="viewer-section">
+                <div class="section-header">
+                    <h3>3D 뷰어</h3>
+                    <div class="roof-buttons">
+                        <button class="roof-btn active" data-roof="matbae" onclick="setRoofType('matbae')">맞배</button>
+                        <button class="roof-btn" data-roof="paljak" onclick="setRoofType('paljak')">팔작</button>
+                        <button class="roof-btn" data-roof="ujingak" onclick="setRoofType('ujingak')">우진각</button>
+                    </div>
+                </div>
+                <div id="viewer3D"></div>
+            </div>
+
+            <div class="area-section">
+                <h3>면적 계산</h3>
+                <div class="area-grid">
+                    <div class="area-item room">
+                        <div class="label">방</div>
+                        <div class="value" id="areaRoom">0 칸²</div>
+                    </div>
+                    <div class="area-item yard">
+                        <div class="label">마당</div>
+                        <div class="value" id="areaYard">0 칸²</div>
+                    </div>
+                    <div class="area-item hall">
+                        <div class="label">대청</div>
+                        <div class="value" id="areaHall">0 칸²</div>
+                    </div>
+                    <div class="area-item total">
+                        <div class="label">실내</div>
+                        <div class="value" id="areaIndoor">0 칸²</div>
+                    </div>
+                </div>
+                <div class="area-total">
+                    <div class="label">총 면적</div>
+                    <div class="value" id="areaTotal">0 칸² (0 ㎡)</div>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <button class="btn btn-primary" onclick="printDrawing()">인쇄</button>
+                <button class="btn btn-secondary" onclick="exportPNG()">PNG</button>
+                <button class="btn btn-secondary" onclick="exportJSON()">JSON</button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="editSelected()">편집</div>
+        <div class="context-menu-item" onclick="duplicateSelected()">복제</div>
+        <div class="context-menu-item delete" onclick="deleteSelected()">삭제</div>
+    </div>
+
+    <!-- New Project Modal -->
+    <div class="modal-overlay" id="newProjectModal">
+        <div class="modal">
+            <h2>새 프로젝트</h2>
+            <div class="form-group">
+                <label>프로젝트 이름</label>
+                <input type="text" id="projectName" value="새 한옥">
+            </div>
+            <div class="form-group">
+                <label>그리드 크기 (칸)</label>
+                <select id="gridSizeSelect">
+                    <option value="8">8 x 8</option>
+                    <option value="10" selected>10 x 10</option>
+                    <option value="12">12 x 12</option>
+                    <option value="16">16 x 16</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeModal('newProjectModal')">취소</button>
+                <button class="btn btn-primary" onclick="createNewProject()">생성</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Area (Hidden) -->
+    <div id="printArea" style="display: none;"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ================== Constants & Units ==================
+        const UNITS = {
+            cheok: { name: '척', toMeter: 0.303, symbol: '척' },
+            kan: { name: '칸', toMeter: 1.818, symbol: '칸' },
+            pyeong: { name: '평', toMeter: Math.sqrt(3.306), symbol: '평' },
+            meter: { name: '미터', toMeter: 1, symbol: 'm' }
+        };
+
+        const COLORS = {
+            red: '#C73E3A',
+            blue: '#1E4D8C',
+            green: '#2D5A27',
+            yellow: '#F2B705',
+            wood: '#8B5A2B',
+            tile: '#4A4A4A',
+            hanji: '#F5F5DC',
+            grid: '#333333',
+            gridMajor: '#444444',
+            column: '#8B5A2B',
+            beam: '#A0522D',
+            room: 'rgba(199, 62, 58, 0.3)',
+            roomStroke: '#C73E3A',
+            yard: 'rgba(45, 90, 39, 0.3)',
+            yardStroke: '#2D5A27',
+            hall: 'rgba(30, 77, 140, 0.3)',
+            hallStroke: '#1E4D8C',
+            selected: '#F2B705'
+        };
+
+        // ================== Data Model ==================
+        let project = {
+            metadata: {
+                name: '새 한옥',
+                unitSystem: 'kan',
+                scale: 1
+            },
+            settings: {
+                gridSize: 10,
+                snapToGrid: true,
+                showDimensions: true,
+                roofType: 'matbae'
+            },
+            elements: {
+                columns: [],
+                beams: [],
+                rooms: [],
+                yards: [],
+                mainHalls: []
+            },
+            roof: {
+                type: 'matbae',
+                material: 'giwa',
+                overhang: 1
+            }
+        };
+
+        let idCounter = 0;
+        const generateId = () => `elem_${++idCounter}`;
+
+        // ================== State ==================
+        let currentTool = 'select';
+        let selectedElement = null;
+        let isDragging = false;
+        let dragStart = null;
+        let tempPolygon = [];
+        let beamStartColumn = null;
+
+        // ================== Canvas Setup ==================
+        const canvas = document.getElementById('floorPlanCanvas');
+        const ctx = canvas.getContext('2d');
+        let canvasWidth, canvasHeight;
+        let gridPixelSize = 60; // pixels per grid unit
+        let offsetX = 50, offsetY = 50;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvasWidth = container.clientWidth;
+            canvasHeight = container.clientHeight;
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            render();
+        }
+
+        // ================== Coordinate Conversion ==================
+        function screenToGrid(screenX, screenY) {
+            const gridX = (screenX - offsetX) / gridPixelSize;
+            const gridY = (screenY - offsetY) / gridPixelSize;
+            return { x: gridX, y: gridY };
+        }
+
+        function gridToScreen(gridX, gridY) {
+            const screenX = gridX * gridPixelSize + offsetX;
+            const screenY = gridY * gridPixelSize + offsetY;
+            return { x: screenX, y: screenY };
+        }
+
+        function snapToGrid(gridPos) {
+            if (!project.settings.snapToGrid) return gridPos;
+            return {
+                x: Math.round(gridPos.x),
+                y: Math.round(gridPos.y)
+            };
+        }
+
+        // ================== Unit Conversion ==================
+        function convertUnit(value, fromUnit, toUnit) {
+            const meters = value * UNITS[fromUnit].toMeter;
+            return meters / UNITS[toUnit].toMeter;
+        }
+
+        function formatArea(areaInKan, unitSystem) {
+            if (unitSystem === 'kan') {
+                return `${areaInKan.toFixed(1)} 칸²`;
+            } else if (unitSystem === 'meter') {
+                const sqm = areaInKan * UNITS.kan.toMeter * UNITS.kan.toMeter;
+                return `${sqm.toFixed(1)} ㎡`;
+            } else if (unitSystem === 'cheok') {
+                const sqCheok = areaInKan * 36; // 1칸² = 36척²
+                return `${sqCheok.toFixed(1)} 척²`;
+            }
+            return `${areaInKan.toFixed(1)} 칸²`;
+        }
+
+        // ================== Area Calculation (Shoelace Formula) ==================
+        function calculatePolygonArea(vertices) {
+            if (vertices.length < 3) return 0;
+            let area = 0;
+            for (let i = 0; i < vertices.length; i++) {
+                const j = (i + 1) % vertices.length;
+                area += vertices[i].x * vertices[j].y;
+                area -= vertices[j].x * vertices[i].y;
+            }
+            return Math.abs(area) / 2;
+        }
+
+        function calculateRectArea(rect) {
+            return rect.width * rect.height;
+        }
+
+        function updateAreaDisplay() {
+            const unitSystem = project.metadata.unitSystem;
+
+            let roomArea = 0;
+            let yardArea = 0;
+            let hallArea = 0;
+
+            project.elements.rooms.forEach(room => {
+                if (room.polygon && room.polygon.length >= 3) {
+                    roomArea += calculatePolygonArea(room.polygon);
+                } else if (room.rect) {
+                    roomArea += calculateRectArea(room.rect);
+                }
+            });
+
+            project.elements.yards.forEach(yard => {
+                if (yard.polygon && yard.polygon.length >= 3) {
+                    yardArea += calculatePolygonArea(yard.polygon);
+                } else if (yard.rect) {
+                    yardArea += calculateRectArea(yard.rect);
+                }
+            });
+
+            project.elements.mainHalls.forEach(hall => {
+                if (hall.polygon && hall.polygon.length >= 3) {
+                    hallArea += calculatePolygonArea(hall.polygon);
+                } else if (hall.rect) {
+                    hallArea += calculateRectArea(hall.rect);
+                }
+            });
+
+            const indoorArea = roomArea + hallArea;
+            const totalArea = roomArea + yardArea + hallArea;
+
+            document.getElementById('areaRoom').textContent = formatArea(roomArea, unitSystem);
+            document.getElementById('areaYard').textContent = formatArea(yardArea, unitSystem);
+            document.getElementById('areaHall').textContent = formatArea(hallArea, unitSystem);
+            document.getElementById('areaIndoor').textContent = formatArea(indoorArea, unitSystem);
+
+            const sqm = totalArea * UNITS.kan.toMeter * UNITS.kan.toMeter;
+            document.getElementById('areaTotal').textContent =
+                `${formatArea(totalArea, unitSystem)} (${sqm.toFixed(1)} ㎡)`;
+        }
+
+        // ================== Rendering ==================
+        function render() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            drawGrid();
+            drawYards();
+            drawRooms();
+            drawMainHalls();
+            drawBeams();
+            drawColumns();
+            drawTempPolygon();
+            drawDimensions();
+            drawSelection();
+        }
+
+        function drawGrid() {
+            const gridSize = project.settings.gridSize;
+
+            // Minor grid lines
+            ctx.strokeStyle = COLORS.grid;
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= gridSize; i++) {
+                const pos = gridToScreen(i, 0);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, offsetY);
+                ctx.lineTo(pos.x, offsetY + gridSize * gridPixelSize);
+                ctx.stroke();
+
+                const posY = gridToScreen(0, i);
+                ctx.beginPath();
+                ctx.moveTo(offsetX, posY.y);
+                ctx.lineTo(offsetX + gridSize * gridPixelSize, posY.y);
+                ctx.stroke();
+            }
+
+            // Major grid lines (every 2 units)
+            ctx.strokeStyle = COLORS.gridMajor;
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= gridSize; i += 2) {
+                const pos = gridToScreen(i, 0);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, offsetY);
+                ctx.lineTo(pos.x, offsetY + gridSize * gridPixelSize);
+                ctx.stroke();
+
+                const posY = gridToScreen(0, i);
+                ctx.beginPath();
+                ctx.moveTo(offsetX, posY.y);
+                ctx.lineTo(offsetX + gridSize * gridPixelSize, posY.y);
+                ctx.stroke();
+            }
+
+            // Grid labels
+            ctx.fillStyle = COLORS.yellow;
+            ctx.font = '10px Noto Sans KR';
+            ctx.textAlign = 'center';
+            for (let i = 0; i <= gridSize; i++) {
+                const pos = gridToScreen(i, 0);
+                ctx.fillText(i.toString(), pos.x, offsetY - 8);
+
+                const posY = gridToScreen(0, i);
+                ctx.textAlign = 'right';
+                ctx.fillText(i.toString(), offsetX - 8, posY.y + 4);
+                ctx.textAlign = 'center';
+            }
+        }
+
+        function drawPolygon(polygon, fillColor, strokeColor, lineWidth = 2) {
+            if (!polygon || polygon.length < 2) return;
+
+            ctx.beginPath();
+            const start = gridToScreen(polygon[0].x, polygon[0].y);
+            ctx.moveTo(start.x, start.y);
+
+            for (let i = 1; i < polygon.length; i++) {
+                const pos = gridToScreen(polygon[i].x, polygon[i].y);
+                ctx.lineTo(pos.x, pos.y);
+            }
+
+            if (polygon.length >= 3) {
+                ctx.closePath();
+                ctx.fillStyle = fillColor;
+                ctx.fill();
+            }
+
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+        }
+
+        function drawRect(rect, fillColor, strokeColor, lineWidth = 2) {
+            const topLeft = gridToScreen(rect.x, rect.y);
+            const width = rect.width * gridPixelSize;
+            const height = rect.height * gridPixelSize;
+
+            ctx.fillStyle = fillColor;
+            ctx.fillRect(topLeft.x, topLeft.y, width, height);
+
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = lineWidth;
+            ctx.strokeRect(topLeft.x, topLeft.y, width, height);
+        }
+
+        function drawRooms() {
+            project.elements.rooms.forEach(room => {
+                const isSelected = selectedElement && selectedElement.id === room.id;
+                const stroke = isSelected ? COLORS.selected : COLORS.roomStroke;
+                const lineWidth = isSelected ? 3 : 2;
+
+                if (room.polygon && room.polygon.length >= 3) {
+                    drawPolygon(room.polygon, COLORS.room, stroke, lineWidth);
+                } else if (room.rect) {
+                    drawRect(room.rect, COLORS.room, stroke, lineWidth);
+                }
+
+                // Draw room label
+                if (room.name) {
+                    const center = getRoomCenter(room);
+                    const screenPos = gridToScreen(center.x, center.y);
+                    ctx.fillStyle = COLORS.red;
+                    ctx.font = 'bold 12px Noto Sans KR';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(room.name, screenPos.x, screenPos.y);
+                }
+            });
+        }
+
+        function drawYards() {
+            project.elements.yards.forEach(yard => {
+                const isSelected = selectedElement && selectedElement.id === yard.id;
+                const stroke = isSelected ? COLORS.selected : COLORS.yardStroke;
+                const lineWidth = isSelected ? 3 : 2;
+
+                if (yard.polygon && yard.polygon.length >= 3) {
+                    drawPolygon(yard.polygon, COLORS.yard, stroke, lineWidth);
+                } else if (yard.rect) {
+                    drawRect(yard.rect, COLORS.yard, stroke, lineWidth);
+                }
+
+                if (yard.name) {
+                    const center = getRoomCenter(yard);
+                    const screenPos = gridToScreen(center.x, center.y);
+                    ctx.fillStyle = COLORS.green;
+                    ctx.font = 'bold 12px Noto Sans KR';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(yard.name, screenPos.x, screenPos.y);
+                }
+            });
+        }
+
+        function drawMainHalls() {
+            project.elements.mainHalls.forEach(hall => {
+                const isSelected = selectedElement && selectedElement.id === hall.id;
+                const stroke = isSelected ? COLORS.selected : COLORS.hallStroke;
+                const lineWidth = isSelected ? 3 : 2;
+
+                if (hall.polygon && hall.polygon.length >= 3) {
+                    drawPolygon(hall.polygon, COLORS.hall, stroke, lineWidth);
+                } else if (hall.rect) {
+                    drawRect(hall.rect, COLORS.hall, stroke, lineWidth);
+                }
+
+                if (hall.name) {
+                    const center = getRoomCenter(hall);
+                    const screenPos = gridToScreen(center.x, center.y);
+                    ctx.fillStyle = COLORS.blue;
+                    ctx.font = 'bold 12px Noto Sans KR';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(hall.name, screenPos.x, screenPos.y);
+                }
+            });
+        }
+
+        function drawColumns() {
+            project.elements.columns.forEach(column => {
+                const pos = gridToScreen(column.position.x, column.position.y);
+                const isSelected = selectedElement && selectedElement.id === column.id;
+                const size = 12;
+
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+                ctx.fillStyle = COLORS.column;
+                ctx.fill();
+
+                if (isSelected) {
+                    ctx.strokeStyle = COLORS.selected;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+            });
+        }
+
+        function drawBeams() {
+            project.elements.beams.forEach(beam => {
+                const startCol = project.elements.columns.find(c => c.id === beam.startColumn);
+                const endCol = project.elements.columns.find(c => c.id === beam.endColumn);
+
+                if (!startCol || !endCol) return;
+
+                const start = gridToScreen(startCol.position.x, startCol.position.y);
+                const end = gridToScreen(endCol.position.x, endCol.position.y);
+                const isSelected = selectedElement && selectedElement.id === beam.id;
+
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.strokeStyle = isSelected ? COLORS.selected : COLORS.beam;
+                ctx.lineWidth = isSelected ? 6 : 4;
+                ctx.stroke();
+            });
+
+            // Draw temporary beam when creating
+            if (currentTool === 'beam' && beamStartColumn) {
+                const startCol = project.elements.columns.find(c => c.id === beamStartColumn);
+                if (startCol && dragStart) {
+                    const start = gridToScreen(startCol.position.x, startCol.position.y);
+                    ctx.beginPath();
+                    ctx.moveTo(start.x, start.y);
+                    ctx.lineTo(dragStart.screenX, dragStart.screenY);
+                    ctx.strokeStyle = COLORS.yellow;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+
+        function drawTempPolygon() {
+            if (tempPolygon.length === 0) return;
+
+            let color, stroke;
+            if (currentTool === 'room') {
+                color = COLORS.room;
+                stroke = COLORS.roomStroke;
+            } else if (currentTool === 'yard') {
+                color = COLORS.yard;
+                stroke = COLORS.yardStroke;
+            } else if (currentTool === 'hall') {
+                color = COLORS.hall;
+                stroke = COLORS.hallStroke;
+            } else {
+                return;
+            }
+
+            // Draw completed vertices
+            ctx.beginPath();
+            const start = gridToScreen(tempPolygon[0].x, tempPolygon[0].y);
+            ctx.moveTo(start.x, start.y);
+
+            for (let i = 1; i < tempPolygon.length; i++) {
+                const pos = gridToScreen(tempPolygon[i].x, tempPolygon[i].y);
+                ctx.lineTo(pos.x, pos.y);
+            }
+
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw vertex points
+            tempPolygon.forEach(v => {
+                const pos = gridToScreen(v.x, v.y);
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = stroke;
+                ctx.fill();
+            });
+        }
+
+        function drawDimensions() {
+            if (!project.settings.showDimensions) return;
+
+            const unitSymbol = UNITS[project.metadata.unitSystem].symbol;
+            ctx.font = '10px Noto Sans KR';
+            ctx.fillStyle = '#888';
+
+            // Draw dimensions for rooms
+            project.elements.rooms.forEach(room => {
+                if (room.rect) {
+                    drawRectDimensions(room.rect, unitSymbol);
+                }
+            });
+
+            project.elements.yards.forEach(yard => {
+                if (yard.rect) {
+                    drawRectDimensions(yard.rect, unitSymbol);
+                }
+            });
+
+            project.elements.mainHalls.forEach(hall => {
+                if (hall.rect) {
+                    drawRectDimensions(hall.rect, unitSymbol);
+                }
+            });
+        }
+
+        function drawRectDimensions(rect, unitSymbol) {
+            const topLeft = gridToScreen(rect.x, rect.y);
+            const width = rect.width;
+            const height = rect.height;
+
+            // Width dimension (top)
+            ctx.textAlign = 'center';
+            ctx.fillText(
+                `${width.toFixed(1)}${unitSymbol}`,
+                topLeft.x + (width * gridPixelSize) / 2,
+                topLeft.y - 5
+            );
+
+            // Height dimension (left)
+            ctx.save();
+            ctx.translate(topLeft.x - 5, topLeft.y + (height * gridPixelSize) / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(`${height.toFixed(1)}${unitSymbol}`, 0, 0);
+            ctx.restore();
+        }
+
+        function drawSelection() {
+            if (!selectedElement) return;
+            // Selection is already drawn with yellow stroke in individual draw functions
+        }
+
+        function getRoomCenter(room) {
+            if (room.polygon && room.polygon.length >= 3) {
+                const sumX = room.polygon.reduce((s, v) => s + v.x, 0);
+                const sumY = room.polygon.reduce((s, v) => s + v.y, 0);
+                return {
+                    x: sumX / room.polygon.length,
+                    y: sumY / room.polygon.length
+                };
+            } else if (room.rect) {
+                return {
+                    x: room.rect.x + room.rect.width / 2,
+                    y: room.rect.y + room.rect.height / 2
+                };
+            }
+            return { x: 0, y: 0 };
+        }
+
+        // ================== Event Handlers ==================
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+            const gridPos = screenToGrid(screenX, screenY);
+            const snappedPos = snapToGrid(gridPos);
+
+            if (e.button === 2) {
+                // Right click - context menu
+                if (selectedElement) {
+                    showContextMenu(e.clientX, e.clientY);
+                }
+                return;
+            }
+
+            isDragging = true;
+            dragStart = {
+                screenX, screenY,
+                gridX: snappedPos.x,
+                gridY: snappedPos.y
+            };
+
+            switch (currentTool) {
+                case 'select':
+                    selectElementAt(gridPos);
+                    break;
+                case 'column':
+                    addColumn(snappedPos);
+                    break;
+                case 'beam':
+                    handleBeamClick(snappedPos);
+                    break;
+                case 'room':
+                case 'yard':
+                case 'hall':
+                    // Start polygon or add vertex
+                    break;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+            const gridPos = screenToGrid(screenX, screenY);
+            const snappedPos = snapToGrid(gridPos);
+
+            // Update status bar
+            const unitSymbol = UNITS[project.metadata.unitSystem].symbol;
+            document.getElementById('statusCoords').textContent =
+                `X: ${snappedPos.x.toFixed(1)}${unitSymbol} Y: ${snappedPos.y.toFixed(1)}${unitSymbol}`;
+
+            if (isDragging && currentTool === 'beam' && beamStartColumn) {
+                dragStart.screenX = screenX;
+                dragStart.screenY = screenY;
+                render();
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
+            const gridPos = screenToGrid(screenX, screenY);
+            const snappedPos = snapToGrid(gridPos);
+
+            if (isDragging && dragStart) {
+                const dx = Math.abs(snappedPos.x - dragStart.gridX);
+                const dy = Math.abs(snappedPos.y - dragStart.gridY);
+
+                if (dx > 0.5 || dy > 0.5) {
+                    // This was a drag operation
+                    if (currentTool === 'room') {
+                        addRoomFromDrag(dragStart, snappedPos);
+                    } else if (currentTool === 'yard') {
+                        addYardFromDrag(dragStart, snappedPos);
+                    } else if (currentTool === 'hall') {
+                        addHallFromDrag(dragStart, snappedPos);
+                    }
+                }
+            }
+
+            isDragging = false;
+            dragStart = null;
+        });
+
+        canvas.addEventListener('dblclick', (e) => {
+            if (tempPolygon.length >= 3) {
+                finalizePolygon();
+            }
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        document.addEventListener('click', (e) => {
+            const contextMenu = document.getElementById('contextMenu');
+            if (!contextMenu.contains(e.target)) {
+                contextMenu.classList.remove('active');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedElement) {
+                    deleteSelected();
+                }
+            } else if (e.key === 'Escape') {
+                tempPolygon = [];
+                beamStartColumn = null;
+                render();
+            }
+        });
+
+        // ================== Tool Functions ==================
+        window.setTool = function(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tool === tool);
+            });
+
+            const toolNames = {
+                select: '선택',
+                column: '기둥',
+                beam: '보',
+                room: '방',
+                yard: '마당',
+                hall: '대청'
+            };
+            document.getElementById('statusTool').textContent = `도구: ${toolNames[tool]}`;
+
+            // Reset temp states
+            tempPolygon = [];
+            beamStartColumn = null;
+            render();
+        };
+
+        function addColumn(gridPos) {
+            const column = {
+                id: generateId(),
+                position: { x: gridPos.x, y: gridPos.y },
+                dimensions: { diameter: 0.3 },
+                style: 'round'
+            };
+            project.elements.columns.push(column);
+            render();
+            update3DView();
+        }
+
+        function handleBeamClick(gridPos) {
+            // Find closest column
+            const threshold = 0.5;
+            const closestColumn = project.elements.columns.find(col => {
+                const dx = Math.abs(col.position.x - gridPos.x);
+                const dy = Math.abs(col.position.y - gridPos.y);
+                return dx < threshold && dy < threshold;
+            });
+
+            if (!closestColumn) return;
+
+            if (!beamStartColumn) {
+                beamStartColumn = closestColumn.id;
+            } else {
+                if (beamStartColumn !== closestColumn.id) {
+                    const beam = {
+                        id: generateId(),
+                        startColumn: beamStartColumn,
+                        endColumn: closestColumn.id,
+                        beamType: 'main'
+                    };
+                    project.elements.beams.push(beam);
+                    render();
+                    update3DView();
+                }
+                beamStartColumn = null;
+            }
+        }
+
+        function addRoomFromDrag(start, end) {
+            const room = {
+                id: generateId(),
+                name: '방',
+                roomType: 'room',
+                rect: {
+                    x: Math.min(start.gridX, end.x),
+                    y: Math.min(start.gridY, end.y),
+                    width: Math.abs(end.x - start.gridX),
+                    height: Math.abs(end.y - start.gridY)
+                },
+                features: []
+            };
+            project.elements.rooms.push(room);
+            render();
+            updateAreaDisplay();
+            update3DView();
+        }
+
+        function addYardFromDrag(start, end) {
+            const yard = {
+                id: generateId(),
+                name: '마당',
+                yardType: 'main',
+                rect: {
+                    x: Math.min(start.gridX, end.x),
+                    y: Math.min(start.gridY, end.y),
+                    width: Math.abs(end.x - start.gridX),
+                    height: Math.abs(end.y - start.gridY)
+                }
+            };
+            project.elements.yards.push(yard);
+            render();
+            updateAreaDisplay();
+            update3DView();
+        }
+
+        function addHallFromDrag(start, end) {
+            const hall = {
+                id: generateId(),
+                name: '대청',
+                rect: {
+                    x: Math.min(start.gridX, end.x),
+                    y: Math.min(start.gridY, end.y),
+                    width: Math.abs(end.x - start.gridX),
+                    height: Math.abs(end.y - start.gridY)
+                },
+                features: []
+            };
+            project.elements.mainHalls.push(hall);
+            render();
+            updateAreaDisplay();
+            update3DView();
+        }
+
+        function finalizePolygon() {
+            if (tempPolygon.length < 3) return;
+
+            if (currentTool === 'room') {
+                project.elements.rooms.push({
+                    id: generateId(),
+                    name: '방',
+                    roomType: 'room',
+                    polygon: [...tempPolygon],
+                    features: []
+                });
+            } else if (currentTool === 'yard') {
+                project.elements.yards.push({
+                    id: generateId(),
+                    name: '마당',
+                    yardType: 'main',
+                    polygon: [...tempPolygon]
+                });
+            } else if (currentTool === 'hall') {
+                project.elements.mainHalls.push({
+                    id: generateId(),
+                    name: '대청',
+                    polygon: [...tempPolygon],
+                    features: []
+                });
+            }
+
+            tempPolygon = [];
+            render();
+            updateAreaDisplay();
+            update3DView();
+        }
+
+        function selectElementAt(gridPos) {
+            selectedElement = null;
+            const threshold = 0.5;
+
+            // Check columns
+            for (const col of project.elements.columns) {
+                const dx = Math.abs(col.position.x - gridPos.x);
+                const dy = Math.abs(col.position.y - gridPos.y);
+                if (dx < threshold && dy < threshold) {
+                    selectedElement = col;
+                    break;
+                }
+            }
+
+            // Check rooms
+            if (!selectedElement) {
+                for (const room of project.elements.rooms) {
+                    if (isPointInElement(gridPos, room)) {
+                        selectedElement = room;
+                        break;
+                    }
+                }
+            }
+
+            // Check yards
+            if (!selectedElement) {
+                for (const yard of project.elements.yards) {
+                    if (isPointInElement(gridPos, yard)) {
+                        selectedElement = yard;
+                        break;
+                    }
+                }
+            }
+
+            // Check halls
+            if (!selectedElement) {
+                for (const hall of project.elements.mainHalls) {
+                    if (isPointInElement(gridPos, hall)) {
+                        selectedElement = hall;
+                        break;
+                    }
+                }
+            }
+
+            render();
+        }
+
+        function isPointInElement(point, element) {
+            if (element.rect) {
+                return point.x >= element.rect.x &&
+                       point.x <= element.rect.x + element.rect.width &&
+                       point.y >= element.rect.y &&
+                       point.y <= element.rect.y + element.rect.height;
+            } else if (element.polygon) {
+                return isPointInPolygon(point, element.polygon);
+            }
+            return false;
+        }
+
+        function isPointInPolygon(point, polygon) {
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i].x, yi = polygon[i].y;
+                const xj = polygon[j].x, yj = polygon[j].y;
+
+                if (((yi > point.y) !== (yj > point.y)) &&
+                    (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+        // ================== Context Menu ==================
+        function showContextMenu(x, y) {
+            const menu = document.getElementById('contextMenu');
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.classList.add('active');
+        }
+
+        window.editSelected = function() {
+            document.getElementById('contextMenu').classList.remove('active');
+            if (!selectedElement) return;
+
+            const newName = prompt('이름 입력:', selectedElement.name || '');
+            if (newName !== null) {
+                selectedElement.name = newName;
+                render();
+            }
+        };
+
+        window.duplicateSelected = function() {
+            document.getElementById('contextMenu').classList.remove('active');
+            if (!selectedElement) return;
+
+            const copy = JSON.parse(JSON.stringify(selectedElement));
+            copy.id = generateId();
+
+            // Offset the copy
+            if (copy.position) {
+                copy.position.x += 1;
+                copy.position.y += 1;
+            } else if (copy.rect) {
+                copy.rect.x += 1;
+                copy.rect.y += 1;
+            } else if (copy.polygon) {
+                copy.polygon = copy.polygon.map(v => ({ x: v.x + 1, y: v.y + 1 }));
+            }
+
+            // Add to appropriate array
+            if (project.elements.columns.some(c => c.id === selectedElement.id)) {
+                project.elements.columns.push(copy);
+            } else if (project.elements.rooms.some(r => r.id === selectedElement.id)) {
+                project.elements.rooms.push(copy);
+            } else if (project.elements.yards.some(y => y.id === selectedElement.id)) {
+                project.elements.yards.push(copy);
+            } else if (project.elements.mainHalls.some(h => h.id === selectedElement.id)) {
+                project.elements.mainHalls.push(copy);
+            }
+
+            render();
+            updateAreaDisplay();
+            update3DView();
+        };
+
+        window.deleteSelected = function() {
+            document.getElementById('contextMenu').classList.remove('active');
+            if (!selectedElement) return;
+
+            project.elements.columns = project.elements.columns.filter(c => c.id !== selectedElement.id);
+            project.elements.beams = project.elements.beams.filter(b => b.id !== selectedElement.id);
+            project.elements.rooms = project.elements.rooms.filter(r => r.id !== selectedElement.id);
+            project.elements.yards = project.elements.yards.filter(y => y.id !== selectedElement.id);
+            project.elements.mainHalls = project.elements.mainHalls.filter(h => h.id !== selectedElement.id);
+
+            // Also remove beams connected to deleted column
+            project.elements.beams = project.elements.beams.filter(b =>
+                b.startColumn !== selectedElement.id && b.endColumn !== selectedElement.id
+            );
+
+            selectedElement = null;
+            render();
+            updateAreaDisplay();
+            update3DView();
+        };
+
+        // ================== 3D Viewer ==================
+        let scene, camera, renderer, controls;
+        let hanok3DGroup;
+
+        function init3DViewer() {
+            const container = document.getElementById('viewer3D');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a1a);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(15, 15, 15);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(30, 30);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0x3a5a3a,
+                roughness: 0.8
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Grid helper
+            const gridHelper = new THREE.GridHelper(30, 30, 0x444444, 0x333333);
+            scene.add(gridHelper);
+
+            hanok3DGroup = new THREE.Group();
+            scene.add(hanok3DGroup);
+
+            animate3D();
+            update3DView();
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function resize3DViewer() {
+            const container = document.getElementById('viewer3D');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            if (camera && renderer) {
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            }
+        }
+
+        function update3DView() {
+            if (!hanok3DGroup) return;
+
+            // Clear existing objects
+            while (hanok3DGroup.children.length > 0) {
+                hanok3DGroup.remove(hanok3DGroup.children[0]);
+            }
+
+            const scale = UNITS.kan.toMeter;
+
+            // Generate columns
+            project.elements.columns.forEach(col => {
+                const geometry = new THREE.CylinderGeometry(0.15, 0.15, 3, 16);
+                const material = new THREE.MeshStandardMaterial({ color: 0x8B5A2B });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(
+                    (col.position.x - project.settings.gridSize / 2) * scale,
+                    1.5,
+                    (col.position.y - project.settings.gridSize / 2) * scale
+                );
+                mesh.castShadow = true;
+                hanok3DGroup.add(mesh);
+            });
+
+            // Generate beams
+            project.elements.beams.forEach(beam => {
+                const startCol = project.elements.columns.find(c => c.id === beam.startColumn);
+                const endCol = project.elements.columns.find(c => c.id === beam.endColumn);
+                if (!startCol || !endCol) return;
+
+                const start = new THREE.Vector3(
+                    (startCol.position.x - project.settings.gridSize / 2) * scale,
+                    2.8,
+                    (startCol.position.y - project.settings.gridSize / 2) * scale
+                );
+                const end = new THREE.Vector3(
+                    (endCol.position.x - project.settings.gridSize / 2) * scale,
+                    2.8,
+                    (endCol.position.y - project.settings.gridSize / 2) * scale
+                );
+
+                const direction = new THREE.Vector3().subVectors(end, start);
+                const length = direction.length();
+
+                const geometry = new THREE.BoxGeometry(length, 0.2, 0.15);
+                const material = new THREE.MeshStandardMaterial({ color: 0xA0522D });
+                const mesh = new THREE.Mesh(geometry, material);
+
+                mesh.position.copy(start.clone().add(direction.multiplyScalar(0.5)));
+                mesh.lookAt(end);
+                mesh.rotateY(Math.PI / 2);
+                mesh.castShadow = true;
+                hanok3DGroup.add(mesh);
+            });
+
+            // Generate floors for rooms
+            project.elements.rooms.forEach(room => {
+                if (room.rect) {
+                    const geometry = new THREE.BoxGeometry(
+                        room.rect.width * scale,
+                        0.1,
+                        room.rect.height * scale
+                    );
+                    const material = new THREE.MeshStandardMaterial({ color: 0xF5F5DC });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(
+                        (room.rect.x + room.rect.width / 2 - project.settings.gridSize / 2) * scale,
+                        0.05,
+                        (room.rect.y + room.rect.height / 2 - project.settings.gridSize / 2) * scale
+                    );
+                    mesh.receiveShadow = true;
+                    hanok3DGroup.add(mesh);
+                }
+            });
+
+            // Generate floors for halls
+            project.elements.mainHalls.forEach(hall => {
+                if (hall.rect) {
+                    const geometry = new THREE.BoxGeometry(
+                        hall.rect.width * scale,
+                        0.1,
+                        hall.rect.height * scale
+                    );
+                    const material = new THREE.MeshStandardMaterial({ color: 0xDEB887 });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(
+                        (hall.rect.x + hall.rect.width / 2 - project.settings.gridSize / 2) * scale,
+                        0.05,
+                        (hall.rect.y + hall.rect.height / 2 - project.settings.gridSize / 2) * scale
+                    );
+                    mesh.receiveShadow = true;
+                    hanok3DGroup.add(mesh);
+                }
+            });
+
+            // Generate roof
+            generateRoof();
+        }
+
+        function generateRoof() {
+            // Calculate building bounds from rooms and halls
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+
+            const allElements = [...project.elements.rooms, ...project.elements.mainHalls];
+
+            if (allElements.length === 0) return;
+
+            allElements.forEach(elem => {
+                if (elem.rect) {
+                    minX = Math.min(minX, elem.rect.x);
+                    maxX = Math.max(maxX, elem.rect.x + elem.rect.width);
+                    minY = Math.min(minY, elem.rect.y);
+                    maxY = Math.max(maxY, elem.rect.y + elem.rect.height);
+                }
+            });
+
+            if (minX === Infinity) return;
+
+            const scale = UNITS.kan.toMeter;
+            const width = (maxX - minX) * scale;
+            const depth = (maxY - minY) * scale;
+            const centerX = ((minX + maxX) / 2 - project.settings.gridSize / 2) * scale;
+            const centerZ = ((minY + maxY) / 2 - project.settings.gridSize / 2) * scale;
+            const overhang = project.roof.overhang * scale;
+
+            const roofMaterial = new THREE.MeshStandardMaterial({
+                color: 0x4A4A4A,
+                side: THREE.DoubleSide
+            });
+
+            switch (project.settings.roofType) {
+                case 'matbae':
+                    generateMatbaeRoof(centerX, centerZ, width, depth, overhang, roofMaterial);
+                    break;
+                case 'paljak':
+                    generatePaljakRoof(centerX, centerZ, width, depth, overhang, roofMaterial);
+                    break;
+                case 'ujingak':
+                    generateUjingakRoof(centerX, centerZ, width, depth, overhang, roofMaterial);
+                    break;
+            }
+        }
+
+        // Traditional Korean roof curve function
+        function roofCurveFunction(t) {
+            // Upward curve at the ends (cheoma)
+            return Math.pow(t, 2) * 0.3;
+        }
+
+        function generateMatbaeRoof(centerX, centerZ, width, depth, overhang, material) {
+            const roofHeight = 2;
+            const baseHeight = 3;
+
+            // Create curved roof shape
+            const shape = new THREE.Shape();
+            const halfWidth = (width + overhang * 2) / 2;
+            const halfDepth = (depth + overhang * 2) / 2;
+
+            // Front slope
+            const frontGeom = new THREE.BufferGeometry();
+            const frontVertices = [];
+            const segments = 10;
+
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const x = -halfDepth + t * halfDepth * 2;
+                const curve = roofCurveFunction(Math.abs(t - 0.5) * 2);
+
+                // Bottom edge
+                frontVertices.push(x, baseHeight, halfWidth);
+                // Top edge (ridge)
+                frontVertices.push(x * 0.8, baseHeight + roofHeight - curve, 0);
+            }
+
+            const frontIndices = [];
+            for (let i = 0; i < segments; i++) {
+                const a = i * 2;
+                const b = i * 2 + 1;
+                const c = i * 2 + 2;
+                const d = i * 2 + 3;
+                frontIndices.push(a, b, c);
+                frontIndices.push(b, d, c);
+            }
+
+            frontGeom.setAttribute('position', new THREE.Float32BufferAttribute(frontVertices, 3));
+            frontGeom.setIndex(frontIndices);
+            frontGeom.computeVertexNormals();
+
+            const frontRoof = new THREE.Mesh(frontGeom, material);
+            frontRoof.position.set(centerX, 0, centerZ);
+            hanok3DGroup.add(frontRoof);
+
+            // Back slope (mirror of front)
+            const backRoof = frontRoof.clone();
+            backRoof.scale.z = -1;
+            hanok3DGroup.add(backRoof);
+
+            // Side triangles
+            const sideGeom = new THREE.BufferGeometry();
+            const sideVertices = [
+                -halfDepth, baseHeight, halfWidth,
+                -halfDepth, baseHeight, -halfWidth,
+                -halfDepth * 0.8, baseHeight + roofHeight, 0
+            ];
+            sideGeom.setAttribute('position', new THREE.Float32BufferAttribute(sideVertices, 3));
+            sideGeom.computeVertexNormals();
+
+            const leftSide = new THREE.Mesh(sideGeom, material);
+            leftSide.position.set(centerX, 0, centerZ);
+            hanok3DGroup.add(leftSide);
+
+            const rightSide = leftSide.clone();
+            rightSide.scale.x = -1;
+            hanok3DGroup.add(rightSide);
+        }
+
+        function generatePaljakRoof(centerX, centerZ, width, depth, overhang, material) {
+            const roofHeight = 2;
+            const baseHeight = 3;
+            const halfWidth = (width + overhang * 2) / 2;
+            const halfDepth = (depth + overhang * 2) / 2;
+            const hipRatio = 0.3; // How much of the roof is hip vs gable
+
+            // Main slopes (like matbae but shorter)
+            const mainLength = halfDepth * (1 - hipRatio);
+
+            // Front slope
+            const frontGeom = new THREE.BufferGeometry();
+            const frontVertices = [
+                -mainLength, baseHeight, halfWidth,
+                mainLength, baseHeight, halfWidth,
+                mainLength * 0.8, baseHeight + roofHeight, 0,
+                -mainLength * 0.8, baseHeight + roofHeight, 0
+            ];
+            const frontIndices = [0, 1, 2, 0, 2, 3];
+            frontGeom.setAttribute('position', new THREE.Float32BufferAttribute(frontVertices, 3));
+            frontGeom.setIndex(frontIndices);
+            frontGeom.computeVertexNormals();
+
+            const frontRoof = new THREE.Mesh(frontGeom, material);
+            frontRoof.position.set(centerX, 0, centerZ);
+            hanok3DGroup.add(frontRoof);
+
+            const backRoof = frontRoof.clone();
+            backRoof.scale.z = -1;
+            hanok3DGroup.add(backRoof);
+
+            // Hip sections (four corner triangles)
+            const hipVertices = [
+                -mainLength, baseHeight, halfWidth,
+                -halfDepth, baseHeight, halfWidth * 0.3,
+                -halfDepth, baseHeight, -halfWidth * 0.3,
+                -mainLength, baseHeight, -halfWidth,
+                -mainLength * 0.8, baseHeight + roofHeight, 0
+            ];
+            const hipIndices = [0, 1, 4, 1, 2, 4, 2, 3, 4];
+
+            const hipGeom = new THREE.BufferGeometry();
+            hipGeom.setAttribute('position', new THREE.Float32BufferAttribute(hipVertices, 3));
+            hipGeom.setIndex(hipIndices);
+            hipGeom.computeVertexNormals();
+
+            const leftHip = new THREE.Mesh(hipGeom, material);
+            leftHip.position.set(centerX, 0, centerZ);
+            hanok3DGroup.add(leftHip);
+
+            const rightHip = leftHip.clone();
+            rightHip.scale.x = -1;
+            hanok3DGroup.add(rightHip);
+
+            // Small gable sections
+            const gableGeom = new THREE.BufferGeometry();
+            const gableVertices = [
+                -halfDepth, baseHeight, halfWidth * 0.3,
+                -halfDepth, baseHeight, -halfWidth * 0.3,
+                -halfDepth, baseHeight + roofHeight * 0.5, 0
+            ];
+            gableGeom.setAttribute('position', new THREE.Float32BufferAttribute(gableVertices, 3));
+            gableGeom.computeVertexNormals();
+
+            const leftGable = new THREE.Mesh(gableGeom, material);
+            leftGable.position.set(centerX, 0, centerZ);
+            hanok3DGroup.add(leftGable);
+
+            const rightGable = leftGable.clone();
+            rightGable.scale.x = -1;
+            hanok3DGroup.add(rightGable);
+        }
+
+        function generateUjingakRoof(centerX, centerZ, width, depth, overhang, material) {
+            const roofHeight = 2;
+            const baseHeight = 3;
+            const halfWidth = (width + overhang * 2) / 2;
+            const halfDepth = (depth + overhang * 2) / 2;
+
+            // Four-sided hip roof (pyramid-like but rectangular)
+            const vertices = [
+                // Base corners
+                -halfDepth, baseHeight, halfWidth,   // 0: front-left
+                halfDepth, baseHeight, halfWidth,    // 1: front-right
+                halfDepth, baseHeight, -halfWidth,   // 2: back-right
+                -halfDepth, baseHeight, -halfWidth,  // 3: back-left
+                // Ridge (short line at top)
+                -halfDepth * 0.3, baseHeight + roofHeight, 0, // 4: left ridge
+                halfDepth * 0.3, baseHeight + roofHeight, 0   // 5: right ridge
+            ];
+
+            // Front slope
+            const frontIndices = [0, 1, 5, 0, 5, 4];
+            // Back slope
+            const backIndices = [2, 3, 4, 2, 4, 5];
+            // Left hip
+            const leftIndices = [3, 0, 4];
+            // Right hip
+            const rightIndices = [1, 2, 5];
+
+            const allIndices = [...frontIndices, ...backIndices, ...leftIndices, ...rightIndices];
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setIndex(allIndices);
+            geometry.computeVertexNormals();
+
+            const roof = new THREE.Mesh(geometry, material);
+            roof.position.set(centerX, 0, centerZ);
+            hanok3DGroup.add(roof);
+        }
+
+        window.setRoofType = function(type) {
+            project.settings.roofType = type;
+            project.roof.type = type;
+
+            document.querySelectorAll('.roof-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.roof === type);
+            });
+
+            update3DView();
+        };
+
+        // ================== Project Management ==================
+        window.newProject = function() {
+            document.getElementById('newProjectModal').classList.add('active');
+        };
+
+        window.closeModal = function(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        };
+
+        window.createNewProject = function() {
+            const name = document.getElementById('projectName').value;
+            const gridSize = parseInt(document.getElementById('gridSizeSelect').value);
+
+            project = {
+                metadata: {
+                    name: name,
+                    unitSystem: 'kan',
+                    scale: 1
+                },
+                settings: {
+                    gridSize: gridSize,
+                    snapToGrid: true,
+                    showDimensions: true,
+                    roofType: 'matbae'
+                },
+                elements: {
+                    columns: [],
+                    beams: [],
+                    rooms: [],
+                    yards: [],
+                    mainHalls: []
+                },
+                roof: {
+                    type: 'matbae',
+                    material: 'giwa',
+                    overhang: 1
+                }
+            };
+
+            idCounter = 0;
+            selectedElement = null;
+            closeModal('newProjectModal');
+            render();
+            updateAreaDisplay();
+            update3DView();
+        };
+
+        window.saveProject = function() {
+            const data = JSON.stringify(project, null, 2);
+            localStorage.setItem('hanokProject', data);
+            alert('프로젝트가 저장되었습니다.');
+        };
+
+        window.loadProject = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    project = JSON.parse(e.target.result);
+                    render();
+                    updateAreaDisplay();
+                    update3DView();
+                    alert('프로젝트를 불러왔습니다.');
+                } catch (err) {
+                    alert('파일을 읽을 수 없습니다.');
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        window.changeUnit = function(unit) {
+            project.metadata.unitSystem = unit;
+            render();
+            updateAreaDisplay();
+        };
+
+        // ================== Export Functions ==================
+        window.printDrawing = function() {
+            const printCanvas = document.createElement('canvas');
+            printCanvas.width = 1100;
+            printCanvas.height = 850;
+            const printCtx = printCanvas.getContext('2d');
+
+            // White background
+            printCtx.fillStyle = 'white';
+            printCtx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+
+            // Title block
+            printCtx.strokeStyle = '#000';
+            printCtx.lineWidth = 2;
+            printCtx.strokeRect(20, 20, printCanvas.width - 40, printCanvas.height - 40);
+
+            // Inner frame
+            printCtx.strokeRect(30, 30, printCanvas.width - 60, printCanvas.height - 120);
+
+            // Title
+            printCtx.fillStyle = '#000';
+            printCtx.font = 'bold 24px Noto Sans KR';
+            printCtx.textAlign = 'center';
+            printCtx.fillText(project.metadata.name + ' - 평면도', printCanvas.width / 2, 60);
+
+            // Copy floor plan
+            const tempOffset = { x: offsetX, y: offsetY };
+            const tempPixelSize = gridPixelSize;
+
+            offsetX = 80;
+            offsetY = 100;
+            gridPixelSize = Math.min(
+                (printCanvas.width - 200) / project.settings.gridSize,
+                (printCanvas.height - 250) / project.settings.gridSize
+            );
+
+            // Render to print canvas
+            const originalCtx = ctx;
+            // We need to render the elements manually here
+            printCtx.save();
+
+            // Draw grid
+            printCtx.strokeStyle = '#ccc';
+            printCtx.lineWidth = 0.5;
+            for (let i = 0; i <= project.settings.gridSize; i++) {
+                const x = offsetX + i * gridPixelSize;
+                const y = offsetY + i * gridPixelSize;
+                printCtx.beginPath();
+                printCtx.moveTo(x, offsetY);
+                printCtx.lineTo(x, offsetY + project.settings.gridSize * gridPixelSize);
+                printCtx.stroke();
+                printCtx.beginPath();
+                printCtx.moveTo(offsetX, y);
+                printCtx.lineTo(offsetX + project.settings.gridSize * gridPixelSize, y);
+                printCtx.stroke();
+            }
+
+            // Draw rooms
+            project.elements.rooms.forEach(room => {
+                if (room.rect) {
+                    const x = offsetX + room.rect.x * gridPixelSize;
+                    const y = offsetY + room.rect.y * gridPixelSize;
+                    const w = room.rect.width * gridPixelSize;
+                    const h = room.rect.height * gridPixelSize;
+
+                    printCtx.fillStyle = 'rgba(199, 62, 58, 0.2)';
+                    printCtx.fillRect(x, y, w, h);
+                    printCtx.strokeStyle = '#C73E3A';
+                    printCtx.lineWidth = 2;
+                    printCtx.strokeRect(x, y, w, h);
+
+                    if (room.name) {
+                        printCtx.fillStyle = '#C73E3A';
+                        printCtx.font = 'bold 12px Noto Sans KR';
+                        printCtx.textAlign = 'center';
+                        printCtx.fillText(room.name, x + w/2, y + h/2);
+                    }
+                }
+            });
+
+            // Draw halls
+            project.elements.mainHalls.forEach(hall => {
+                if (hall.rect) {
+                    const x = offsetX + hall.rect.x * gridPixelSize;
+                    const y = offsetY + hall.rect.y * gridPixelSize;
+                    const w = hall.rect.width * gridPixelSize;
+                    const h = hall.rect.height * gridPixelSize;
+
+                    printCtx.fillStyle = 'rgba(30, 77, 140, 0.2)';
+                    printCtx.fillRect(x, y, w, h);
+                    printCtx.strokeStyle = '#1E4D8C';
+                    printCtx.lineWidth = 2;
+                    printCtx.strokeRect(x, y, w, h);
+
+                    if (hall.name) {
+                        printCtx.fillStyle = '#1E4D8C';
+                        printCtx.font = 'bold 12px Noto Sans KR';
+                        printCtx.textAlign = 'center';
+                        printCtx.fillText(hall.name, x + w/2, y + h/2);
+                    }
+                }
+            });
+
+            // Draw yards
+            project.elements.yards.forEach(yard => {
+                if (yard.rect) {
+                    const x = offsetX + yard.rect.x * gridPixelSize;
+                    const y = offsetY + yard.rect.y * gridPixelSize;
+                    const w = yard.rect.width * gridPixelSize;
+                    const h = yard.rect.height * gridPixelSize;
+
+                    printCtx.fillStyle = 'rgba(45, 90, 39, 0.2)';
+                    printCtx.fillRect(x, y, w, h);
+                    printCtx.strokeStyle = '#2D5A27';
+                    printCtx.lineWidth = 2;
+                    printCtx.strokeRect(x, y, w, h);
+
+                    if (yard.name) {
+                        printCtx.fillStyle = '#2D5A27';
+                        printCtx.font = 'bold 12px Noto Sans KR';
+                        printCtx.textAlign = 'center';
+                        printCtx.fillText(yard.name, x + w/2, y + h/2);
+                    }
+                }
+            });
+
+            // Draw columns
+            project.elements.columns.forEach(col => {
+                const x = offsetX + col.position.x * gridPixelSize;
+                const y = offsetY + col.position.y * gridPixelSize;
+                printCtx.beginPath();
+                printCtx.arc(x, y, 8, 0, Math.PI * 2);
+                printCtx.fillStyle = '#8B5A2B';
+                printCtx.fill();
+                printCtx.strokeStyle = '#000';
+                printCtx.lineWidth = 1;
+                printCtx.stroke();
+            });
+
+            // Draw beams
+            project.elements.beams.forEach(beam => {
+                const startCol = project.elements.columns.find(c => c.id === beam.startColumn);
+                const endCol = project.elements.columns.find(c => c.id === beam.endColumn);
+                if (!startCol || !endCol) return;
+
+                const x1 = offsetX + startCol.position.x * gridPixelSize;
+                const y1 = offsetY + startCol.position.y * gridPixelSize;
+                const x2 = offsetX + endCol.position.x * gridPixelSize;
+                const y2 = offsetY + endCol.position.y * gridPixelSize;
+
+                printCtx.beginPath();
+                printCtx.moveTo(x1, y1);
+                printCtx.lineTo(x2, y2);
+                printCtx.strokeStyle = '#A0522D';
+                printCtx.lineWidth = 3;
+                printCtx.stroke();
+            });
+
+            printCtx.restore();
+
+            // Scale bar
+            printCtx.strokeStyle = '#000';
+            printCtx.lineWidth = 2;
+            const scaleBarX = printCanvas.width - 200;
+            const scaleBarY = printCanvas.height - 60;
+            printCtx.beginPath();
+            printCtx.moveTo(scaleBarX, scaleBarY);
+            printCtx.lineTo(scaleBarX + 100, scaleBarY);
+            printCtx.stroke();
+            printCtx.beginPath();
+            printCtx.moveTo(scaleBarX, scaleBarY - 5);
+            printCtx.lineTo(scaleBarX, scaleBarY + 5);
+            printCtx.stroke();
+            printCtx.beginPath();
+            printCtx.moveTo(scaleBarX + 100, scaleBarY - 5);
+            printCtx.lineTo(scaleBarX + 100, scaleBarY + 5);
+            printCtx.stroke();
+            printCtx.font = '12px Noto Sans KR';
+            printCtx.textAlign = 'center';
+            printCtx.fillText('1 칸 (1.818m)', scaleBarX + 50, scaleBarY + 20);
+
+            // North arrow
+            const arrowX = 80;
+            const arrowY = printCanvas.height - 80;
+            printCtx.beginPath();
+            printCtx.moveTo(arrowX, arrowY);
+            printCtx.lineTo(arrowX - 10, arrowY + 20);
+            printCtx.lineTo(arrowX, arrowY + 15);
+            printCtx.lineTo(arrowX + 10, arrowY + 20);
+            printCtx.closePath();
+            printCtx.fillStyle = '#000';
+            printCtx.fill();
+            printCtx.font = 'bold 14px Noto Sans KR';
+            printCtx.fillText('N', arrowX, arrowY - 5);
+
+            // Info box
+            printCtx.font = '11px Noto Sans KR';
+            printCtx.textAlign = 'left';
+            const infoX = 40;
+            const infoY = printCanvas.height - 80;
+            printCtx.fillText(`단위: ${UNITS[project.metadata.unitSystem].name}`, infoX + 80, infoY);
+            printCtx.fillText(`그리드: ${project.settings.gridSize} x ${project.settings.gridSize}`, infoX + 80, infoY + 15);
+
+            // Restore original settings
+            offsetX = tempOffset.x;
+            offsetY = tempOffset.y;
+            gridPixelSize = tempPixelSize;
+
+            // Open print dialog
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head><title>${project.metadata.name} - 평면도</title></head>
+                <body style="margin:0; display:flex; justify-content:center; align-items:center;">
+                    <img src="${printCanvas.toDataURL()}" style="max-width:100%; max-height:100vh;">
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        };
+
+        window.exportPNG = function() {
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = canvasWidth;
+            exportCanvas.height = canvasHeight;
+            const exportCtx = exportCanvas.getContext('2d');
+
+            // Copy current canvas
+            exportCtx.fillStyle = '#1a1a1a';
+            exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+            exportCtx.drawImage(canvas, 0, 0);
+
+            const link = document.createElement('a');
+            link.download = `${project.metadata.name}_평면도.png`;
+            link.href = exportCanvas.toDataURL('image/png');
+            link.click();
+        };
+
+        window.exportJSON = function() {
+            const data = JSON.stringify(project, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.download = `${project.metadata.name}.json`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        };
+
+        // ================== Initialization ==================
+        function init() {
+            resizeCanvas();
+            init3DViewer();
+            updateAreaDisplay();
+
+            // Load saved project if exists
+            const saved = localStorage.getItem('hanokProject');
+            if (saved) {
+                try {
+                    project = JSON.parse(saved);
+                    render();
+                    updateAreaDisplay();
+                    update3DView();
+                } catch (e) {
+                    console.log('Could not load saved project');
+                }
+            }
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                resize3DViewer();
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
